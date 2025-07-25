@@ -42,67 +42,72 @@ class TestPersistenceLength(object):
     def u():
         return mda.Universe(Plength)
 
-    @staticmethod
-    @pytest.fixture()
-    def p(u):
-        ags = [r.atoms.select_atoms("name C* N*") for r in u.residues]
-
-        p = polymer.PersistenceLength(ags)
-        return p
-
-    @staticmethod
-    @pytest.fixture()
-    def p_run(p):
-        return p.run()
-
     def test_ag_ValueError(self, u):
         ags = [u.atoms[:10], u.atoms[10:110]]
         with pytest.raises(ValueError):
             polymer.PersistenceLength(ags)
 
-    def test_run(self, p_run):
-        assert len(p_run.results.bond_autocorrelation) == 280
+    def test_run(self, u, client_PersistenceLength):
+        ags = [r.atoms.select_atoms("name C* N*") for r in u.residues]
+        p = polymer.PersistenceLength(ags).run(**client_PersistenceLength)
+        assert len(p.results.bond_autocorrelation) == 280
 
-    def test_lb(self, p_run):
-        assert_almost_equal(p_run.results.lb, 1.485, 3)
+    def test_lb(self, u, client_PersistenceLength):
+        ags = [r.atoms.select_atoms("name C* N*") for r in u.residues]
+        p = polymer.PersistenceLength(ags).run(**client_PersistenceLength)
+        assert_almost_equal(p.results.lb, 1.485, 3)
 
-    def test_fit(self, p_run):
-        assert_almost_equal(p_run.results.lp, 6.504, 3)
-        assert len(p_run.results.fit) == len(
-            p_run.results.bond_autocorrelation
+    def test_fit(self, u, client_PersistenceLength):
+        ags = [r.atoms.select_atoms("name C* N*") for r in u.residues]
+        p = polymer.PersistenceLength(ags).run(**client_PersistenceLength)
+        assert_almost_equal(p.results.lp, 6.504, 3)
+        assert len(p.results.fit) == len(
+            p.results.bond_autocorrelation
         )
 
-    def test_raise_NoDataError(self, p):
+    def test_raise_NoDataError(self, u):
         # Ensure that a NoDataError is raised if perform_fit()
         # is called before the run() method of AnalysisBase
+        ags = [r.atoms.select_atoms("name C* N*") for r in u.residues]
+        p = polymer.PersistenceLength(ags)
         with pytest.raises(NoDataError):
             p._perform_fit()
 
-    def test_plot_ax_return(self, p_run):
+    def test_plot_ax_return(self, u, client_PersistenceLength):
         """Ensure that a matplotlib axis object is
         returned when plot() is called."""
-        actual = p_run.plot()
+        ags = [r.atoms.select_atoms("name C* N*") for r in u.residues]
+        p = polymer.PersistenceLength(ags).run(**client_PersistenceLength)
+        actual = p.plot()
         expected = matplotlib.axes.Axes
         assert isinstance(actual, expected)
 
-    def test_plot_with_ax(self, p_run):
+    def test_plot_with_ax(self, u, client_PersistenceLength):
         fig, ax = plt.subplots()
-
-        ax2 = p_run.plot(ax=ax)
+        ags = [r.atoms.select_atoms("name C* N*") for r in u.residues]
+        p = polymer.PersistenceLength(ags).run(**client_PersistenceLength)
+        ax2 = p.plot(ax=ax)
 
         assert ax2 is ax
 
-    def test_current_axes(self, p_run):
+    def test_current_axes(self, u, client_PersistenceLength):
         fig, ax = plt.subplots()
-        ax2 = p_run.plot(ax=None)
+        ags = [r.atoms.select_atoms("name C* N*") for r in u.residues]
+        p = polymer.PersistenceLength(ags).run(**client_PersistenceLength)
+        ax2 = p.plot(ax=None)
         assert ax2 is not ax
 
     @pytest.mark.parametrize("attr", ("lb", "lp", "fit"))
-    def test(self, p, attr):
-        p_run = p.run(step=3)
+    def test(self, u, attr, client_PersistenceLength):
+        ags = [r.atoms.select_atoms("name C* N*") for r in u.residues]
+        p = polymer.PersistenceLength(ags).run(step=3, **client_PersistenceLength)
         wmsg = f"The `{attr}` attribute was deprecated in MDAnalysis 2.0.0"
         with pytest.warns(DeprecationWarning, match=wmsg):
-            getattr(p_run, attr) is p_run.results[attr]
+            getattr(p, attr) is p.results[attr]
+
+
+def test_class_is_parallelizable():
+    assert polymer.PersistenceLength._analysis_algorithm_is_parallelizable
 
 
 class TestFitExponential(object):
